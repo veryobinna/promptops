@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-devops.local/schemas/deployment-spec.schema.json",
+  "title": "DeploymentSpec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "application",
+    "database",
+    "compute",
+    "delivery",
+    "observability",
+    "costs"
+  ],
+  "properties": {
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "runtime",
+        "port"
+      ],
+      "properties": {
+        "type": {
+          "const": "node_api"
+        },
+        "runtime": {
+          "const": "nodejs_20"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "tier"
+      ],
+      "properties": {
+        "type": {
+          "const": "postgresql"
+        },
+        "tier": {
+          "const": "managed"
+        }
+      }
+    },
+    "compute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "desiredCount",
+        "autoscaling"
+      ],
+      "properties": {
+        "target": {
+          "const": "aws_ecs_fargate"
+        },
+        "desiredCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "autoscaling": {
+          "type": "boolean"
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "deployOnMerge"
+      ],
+      "properties": {
+        "provider": {
+          "const": "github_actions"
+        },
+        "deployOnMerge": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metrics",
+        "dashboards",
+        "logging",
+        "tracing",
+        "traceBackend"
+      ],
+      "properties": {
+        "metrics": {
+          "type": "boolean"
+        },
+        "dashboards": {
+          "type": "boolean"
+        },
+        "logging": {
+          "const": "structured_json_cloudwatch"
+        },
+        "tracing": {
+          "const": "opentelemetry"
+        },
+        "traceBackend": {
+          "enum": [
+            "none",
+            "tempo"
+          ]
+        }
+      }
+    },
+    "costs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "estimateBeforeApply"
+      ],
+      "properties": {
+        "estimateBeforeApply": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

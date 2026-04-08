@@ -1,0 +1,30 @@
+{
+  "application": {
+    "type": "node_api",
+    "runtime": "nodejs_20",
+    "port": 3000
+  },
+  "database": {
+    "type": "postgresql",
+    "tier": "managed"
+  },
+  "compute": {
+    "target": "aws_ecs_fargate",
+    "desiredCount": 2,
+    "autoscaling": true
+  },
+  "delivery": {
+    "provider": "github_actions",
+    "deployOnMerge": true
+  },
+  "observability": {
+    "metrics": true,
+    "dashboards": true,
+    "logging": "structured_json_cloudwatch",
+    "tracing": "opentelemetry",
+    "traceBackend": "none"
+  },
+  "costs": {
+    "estimateBeforeApply": true
+  }
+}
