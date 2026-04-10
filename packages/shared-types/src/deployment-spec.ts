@@ -54,7 +54,7 @@ function isBoolean(value: unknown): value is boolean {
 }
 
 function isPositiveInteger(value: unknown): value is number {
-  return Number.isInteger(value) && value > 0;
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
 function hasLiteral<T extends readonly string[]>(

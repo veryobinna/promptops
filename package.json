@@ -9,8 +9,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "build": "sh ./scripts/build-workspaces.sh",
+    "typecheck": "sh ./scripts/typecheck-workspaces.sh"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
