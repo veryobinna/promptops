@@ -38,13 +38,15 @@ function renderHtml(): string {
     <title>PromptOps Review</title>
     <style>
       :root {
-        --ink: #181d26;
-        --blue: #1b61c9;
-        --border: #d9dfe8;
-        --surface: #ffffff;
-        --panel: #f7f9fc;
-        --muted: #516173;
-        --success: #0c7a43;
+        --ink: #19212b;
+        --accent: #1f5fbf;
+        --border: #d6dde7;
+        --surface: #f3f5f8;
+        --panel: #ffffff;
+        --panel-muted: #f8fafc;
+        --muted: #617285;
+        --success: #13714d;
+        --danger: #a43737;
       }
 
       * {
@@ -53,75 +55,63 @@ function renderHtml(): string {
 
       body {
         margin: 0;
-        font-family: "Inter", "Segoe UI", sans-serif;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
         color: var(--ink);
-        background:
-          radial-gradient(circle at top right, rgba(27, 97, 201, 0.08), transparent 28%),
-          linear-gradient(180deg, #fbfcff 0%, #f3f6fb 100%);
+        background: var(--surface);
       }
 
       .page {
         width: min(1120px, calc(100vw - 32px));
         margin: 0 auto;
-        padding: 48px 0 72px;
+        padding: 32px 0 48px;
       }
 
       .hero {
         display: grid;
-        gap: 12px;
-        margin-bottom: 28px;
-      }
-
-      .eyebrow {
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.18em;
-        color: var(--blue);
-        text-transform: uppercase;
+        gap: 8px;
+        margin-bottom: 20px;
       }
 
       h1 {
         margin: 0;
-        font-size: clamp(32px, 5vw, 52px);
-        line-height: 1.05;
-        max-width: 12ch;
+        font-size: clamp(28px, 4vw, 40px);
+        line-height: 1.08;
       }
 
       .lede {
-        max-width: 72ch;
+        max-width: 70ch;
         color: var(--muted);
-        font-size: 17px;
-        line-height: 1.55;
+        font-size: 15px;
+        line-height: 1.6;
       }
 
       .layout {
         display: grid;
-        grid-template-columns: 360px minmax(0, 1fr);
-        gap: 20px;
+        grid-template-columns: 340px minmax(0, 1fr);
+        gap: 16px;
         align-items: start;
       }
 
       .panel {
-        background: rgba(255, 255, 255, 0.92);
+        background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 24px;
-        box-shadow: 0 12px 40px rgba(15, 48, 106, 0.08);
-        backdrop-filter: blur(10px);
+        border-radius: 18px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
       }
 
       .panel-inner {
-        padding: 20px;
+        padding: 18px;
       }
 
       .section-title {
-        margin: 0 0 12px;
-        font-size: 18px;
-        font-weight: 700;
+        margin: 0 0 10px;
+        font-size: 16px;
+        font-weight: 600;
       }
 
       .subtle {
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13px;
         line-height: 1.5;
       }
 
@@ -134,22 +124,22 @@ function renderHtml(): string {
       textarea {
         width: 100%;
         border: 1px solid var(--border);
-        border-radius: 16px;
-        background: var(--panel);
+        border-radius: 12px;
+        background: var(--panel-muted);
         color: var(--ink);
-        padding: 14px 16px;
+        padding: 12px 14px;
         resize: vertical;
       }
 
       .prompt-input {
-        min-height: 160px;
+        min-height: 152px;
         margin: 12px 0 14px;
       }
 
       .spec-input {
-        min-height: 420px;
+        min-height: 460px;
         margin-top: 12px;
-        font-family: "SFMono-Regular", "Menlo", monospace;
+        font-family: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
         font-size: 13px;
         line-height: 1.6;
       }
@@ -161,20 +151,22 @@ function renderHtml(): string {
       }
 
       button {
-        border: 0;
-        border-radius: 14px;
-        padding: 12px 18px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 14px;
         font-weight: 600;
         cursor: pointer;
+        transition: background-color 120ms ease, border-color 120ms ease;
       }
 
       .primary {
-        background: var(--blue);
+        background: var(--accent);
+        border-color: var(--accent);
         color: #fff;
       }
 
       .secondary {
-        background: #ebf1fb;
+        background: #fff;
         color: var(--ink);
       }
 
@@ -187,6 +179,10 @@ function renderHtml(): string {
 
       .status.ok {
         color: var(--success);
+      }
+
+      .status.error {
+        color: var(--danger);
       }
 
       .stack {
@@ -202,8 +198,8 @@ function renderHtml(): string {
 
       .meta-card {
         border: 1px solid var(--border);
-        border-radius: 18px;
-        background: var(--panel);
+        border-radius: 14px;
+        background: var(--panel-muted);
         padding: 14px;
       }
 
@@ -241,7 +237,7 @@ function renderHtml(): string {
         text-align: left;
         background: #fff;
         border: 1px solid var(--border);
-        border-radius: 16px;
+        border-radius: 12px;
         padding: 12px 14px;
       }
 
@@ -269,10 +265,9 @@ function renderHtml(): string {
   <body>
     <main class="page">
       <section class="hero">
-        <div class="eyebrow">PromptOps</div>
-        <h1>Review AI-generated deployment specs before anything else happens.</h1>
+        <h1>PromptOps review console</h1>
         <div class="lede">
-          This Phase 1 surface shows the human-in-the-loop flow: submit a deployment prompt, inspect the normalized spec, edit it, and persist the updated version.
+          Submit a deployment request, inspect the normalized spec, adjust it if needed, and save the result back through the gateway.
         </div>
       </section>
 
@@ -280,7 +275,7 @@ function renderHtml(): string {
         <aside class="panel">
           <div class="panel-inner">
             <h2 class="section-title">Prompt Input</h2>
-            <div class="subtle">Submit a deployment request to the api-gateway. It will forward the request to the generator service and store the resulting run locally.</div>
+            <div class="subtle">The gateway forwards this request to the generator service and stores the returned run locally.</div>
             <textarea id="promptInput" class="prompt-input">Deploy a scalable Node.js API with PostgreSQL, CI/CD, monitoring, logging, and cost estimation</textarea>
             <div class="actions">
               <button id="submitPromptButton" class="primary">Generate Spec</button>
@@ -318,7 +313,7 @@ function renderHtml(): string {
 
             <div>
               <h2 class="section-title">Editable Spec</h2>
-              <div class="subtle">Edit the JSON directly, then persist the updated spec back through the api-gateway.</div>
+              <div class="subtle">Edit the JSON directly, then save the updated spec back through the gateway.</div>
               <textarea id="specEditor" class="spec-input" spellcheck="false">{}</textarea>
               <div class="actions" style="margin-top: 12px;">
                 <button id="saveSpecButton" class="primary">Save Spec Changes</button>
@@ -347,9 +342,9 @@ function renderHtml(): string {
       const runCreatedAt = document.getElementById("runCreatedAt");
       const runUpdatedAt = document.getElementById("runUpdatedAt");
 
-      function setStatus(message, ok = false) {
+      function setStatus(message, tone = "neutral") {
         statusMessage.textContent = message;
-        statusMessage.className = ok ? "status ok" : "status";
+        statusMessage.className = tone === "ok" ? "status ok" : tone === "error" ? "status error" : "status";
       }
 
       function renderList(target, items, emptyMessage) {
@@ -419,7 +414,7 @@ function renderHtml(): string {
         setStatus("Loading saved run...");
         const payload = await fetchJson(\`\${apiGatewayUrl}/api/prompt-runs/\${encodeURIComponent(id)}\`);
         renderRun(payload.run);
-        setStatus("Loaded saved run.", true);
+        setStatus("Loaded saved run.", "ok");
       }
 
       async function submitPrompt() {
@@ -436,7 +431,7 @@ function renderHtml(): string {
 
         renderRun(payload.run);
         await refreshRuns();
-        setStatus("Spec generated and saved.", true);
+        setStatus("Spec generated and saved.", "ok");
       }
 
       async function saveSpec() {
@@ -467,14 +462,14 @@ function renderHtml(): string {
 
         renderRun(payload.run);
         await refreshRuns();
-        setStatus("Spec changes saved.", true);
+        setStatus("Spec changes saved.", "ok");
       }
 
       document.getElementById("submitPromptButton").addEventListener("click", async () => {
         try {
           await submitPrompt();
         } catch (error) {
-          setStatus(error instanceof Error ? error.message : "Failed to generate spec.");
+          setStatus(error instanceof Error ? error.message : "Failed to generate spec.", "error");
         }
       });
 
@@ -482,7 +477,7 @@ function renderHtml(): string {
         try {
           await saveSpec();
         } catch (error) {
-          setStatus(error instanceof Error ? error.message : "Failed to save spec changes.");
+          setStatus(error instanceof Error ? error.message : "Failed to save spec changes.", "error");
         }
       });
 
@@ -495,7 +490,7 @@ function renderHtml(): string {
         try {
           await loadRun(state.currentRunId);
         } catch (error) {
-          setStatus(error instanceof Error ? error.message : "Failed to reload run.");
+          setStatus(error instanceof Error ? error.message : "Failed to reload run.", "error");
         }
       });
 
@@ -503,14 +498,14 @@ function renderHtml(): string {
         try {
           setStatus("Refreshing saved runs...");
           await refreshRuns();
-          setStatus("Saved runs refreshed.", true);
+          setStatus("Saved runs refreshed.", "ok");
         } catch (error) {
-          setStatus(error instanceof Error ? error.message : "Failed to refresh runs.");
+          setStatus(error instanceof Error ? error.message : "Failed to refresh runs.", "error");
         }
       });
 
       refreshRuns().catch((error) => {
-        setStatus(error instanceof Error ? error.message : "Failed to load saved runs.");
+        setStatus(error instanceof Error ? error.message : "Failed to load saved runs.", "error");
       });
     </script>
   </body>
