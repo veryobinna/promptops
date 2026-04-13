@@ -90,8 +90,8 @@ function renderHtml(): string {
 
       .layout {
         display: grid;
-        grid-template-columns: 300px minmax(0, 1fr);
-        gap: 14px;
+        grid-template-columns: 272px minmax(0, 1fr);
+        gap: 12px;
         align-items: start;
       }
 
@@ -100,6 +100,11 @@ function renderHtml(): string {
         border: 1px solid var(--border);
         border-radius: 14px;
         box-shadow: 0 1px 1px rgba(16, 24, 40, 0.03);
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 20px;
       }
 
       .panel-inner {
@@ -164,6 +169,10 @@ function renderHtml(): string {
         flex-wrap: wrap;
       }
 
+      .sidebar-actions {
+        display: grid;
+      }
+
       button {
         border: 1px solid var(--border);
         border-radius: 999px;
@@ -200,6 +209,13 @@ function renderHtml(): string {
 
       .stack {
         display: grid;
+        gap: 12px;
+      }
+
+      .main-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         gap: 12px;
       }
 
@@ -246,12 +262,18 @@ function renderHtml(): string {
         text-align: left;
         border-radius: 10px;
         padding: 10px;
+        background: transparent;
       }
 
       .run-button strong {
         display: block;
         margin-bottom: 2px;
         font-weight: 500;
+      }
+
+      .run-button.active {
+        background: var(--panel-muted);
+        border-color: #c9d3df;
       }
 
       .run-prompt {
@@ -270,11 +292,46 @@ function renderHtml(): string {
         gap: 8px;
       }
 
+      .viewer-switch {
+        display: inline-flex;
+        gap: 4px;
+        padding: 3px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--panel-muted);
+      }
+
+      .switch-button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 6px 10px;
+      }
+
+      .switch-button.active {
+        background: #fff;
+        color: var(--ink);
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+      }
+
+      .viewer-pane {
+        display: none;
+      }
+
+      .viewer-pane.active {
+        display: block;
+      }
+
       .artifact-button {
         width: 100%;
         text-align: left;
         border-radius: 10px;
         padding: 8px 10px;
+      }
+
+      .artifact-button.active {
+        background: var(--panel-muted);
+        border-color: #c9d3df;
       }
 
       .artifact-path {
@@ -304,11 +361,11 @@ function renderHtml(): string {
       </header>
 
       <section class="layout">
-        <aside class="panel">
+        <aside class="panel sidebar">
           <div class="panel-inner">
             <h2 class="section-title">New Run</h2>
             <textarea id="promptInput" class="prompt-input">Deploy a scalable Node.js API with PostgreSQL, CI/CD, monitoring, logging, and cost estimation</textarea>
-            <div class="actions">
+            <div class="sidebar-actions">
               <button id="submitPromptButton" class="primary">Generate</button>
             </div>
 
@@ -319,8 +376,15 @@ function renderHtml(): string {
 
         <section class="panel">
           <div class="panel-inner stack">
+            <div class="main-header">
+              <h2 class="section-title" style="margin: 0;">Selected Run</h2>
+              <div class="viewer-switch" role="tablist" aria-label="Review views">
+                <button id="showSpecButton" class="switch-button active" type="button">Spec</button>
+                <button id="showArtifactsButton" class="switch-button" type="button">Artifacts</button>
+              </div>
+            </div>
+
             <div>
-              <h2 class="section-title">Selected Run</h2>
               <div id="runMeta" class="run-meta">
                 <span>Status <strong id="runStatus">No run selected</strong></span>
                 <span>ID <strong id="runId">-</strong></span>
@@ -333,8 +397,7 @@ function renderHtml(): string {
               <ul id="notesList" class="subtle"><li>No notes.</li></ul>
             </div>
 
-            <div>
-              <h2 class="section-title">Spec</h2>
+            <div id="specPane" class="viewer-pane active">
               <textarea id="specEditor" class="spec-input" spellcheck="false">{}</textarea>
               <div class="actions" style="margin-top: 12px;">
                 <button id="saveSpecButton" class="primary">Save</button>
@@ -343,8 +406,7 @@ function renderHtml(): string {
               </div>
             </div>
 
-            <div>
-              <h2 class="section-title">Artifacts</h2>
+            <div id="artifactsPane" class="viewer-pane">
               <div id="artifactList" class="artifact-list"></div>
               <textarea id="artifactViewer" class="artifact-input" spellcheck="false" readonly>No artifacts generated yet.</textarea>
             </div>
@@ -357,6 +419,9 @@ function renderHtml(): string {
       const apiGatewayUrl = "${apiUrl}";
       const state = {
         currentRunId: null,
+        currentView: "spec",
+        currentArtifactPath: null,
+        runs: [],
       };
 
       const promptInput = document.getElementById("promptInput");
@@ -370,15 +435,30 @@ function renderHtml(): string {
       const runUpdatedAt = document.getElementById("runUpdatedAt");
       const artifactList = document.getElementById("artifactList");
       const artifactViewer = document.getElementById("artifactViewer");
+      const specPane = document.getElementById("specPane");
+      const artifactsPane = document.getElementById("artifactsPane");
+      const showSpecButton = document.getElementById("showSpecButton");
+      const showArtifactsButton = document.getElementById("showArtifactsButton");
+
+      function setView(view) {
+        state.currentView = view;
+        specPane.className = view === "spec" ? "viewer-pane active" : "viewer-pane";
+        artifactsPane.className = view === "artifacts" ? "viewer-pane active" : "viewer-pane";
+        showSpecButton.className = view === "spec" ? "switch-button active" : "switch-button";
+        showArtifactsButton.className =
+          view === "artifacts" ? "switch-button active" : "switch-button";
+      }
 
       function clearRun() {
         state.currentRunId = null;
+        state.currentArtifactPath = null;
         runStatus.textContent = "No run selected";
         runId.textContent = "-";
         runUpdatedAt.textContent = "-";
         specEditor.value = "{}";
         renderNotes([], []);
         renderArtifacts(null);
+        setView("spec");
       }
 
       function setStatus(message, tone = "neutral") {
@@ -426,32 +506,42 @@ function renderHtml(): string {
         runUpdatedAt.textContent = new Date(run.updatedAt).toLocaleString();
         specEditor.value = JSON.stringify(run.spec, null, 2);
         renderNotes(run.assumptions, run.warnings);
+        renderSavedRuns(state.runs);
       }
 
       function renderArtifacts(artifacts) {
         artifactList.innerHTML = "";
 
         if (!artifacts || !artifacts.files.length) {
+          state.currentArtifactPath = null;
           artifactList.innerHTML = '<div class="empty">No artifacts generated yet.</div>';
           artifactViewer.value = "No artifacts generated yet.";
           return;
         }
 
-        artifactViewer.value = artifacts.files[0].content;
+        const selectedFile =
+          artifacts.files.find((file) => file.path === state.currentArtifactPath) ?? artifacts.files[0];
+
+        state.currentArtifactPath = selectedFile.path;
+        artifactViewer.value = selectedFile.content;
 
         for (const file of artifacts.files) {
           const button = document.createElement("button");
-          button.className = "artifact-button";
+          button.className =
+            file.path === state.currentArtifactPath ? "artifact-button active" : "artifact-button";
           button.innerHTML =
             \`<div class="artifact-path">\${file.path}</div><div class="artifact-type">\${file.type}</div>\`;
           button.addEventListener("click", () => {
+            state.currentArtifactPath = file.path;
             artifactViewer.value = file.content;
+            renderArtifacts(artifacts);
           });
           artifactList.appendChild(button);
         }
       }
 
       function renderSavedRuns(runs) {
+        state.runs = runs;
         savedRuns.innerHTML = "";
 
         if (!runs.length) {
@@ -461,7 +551,8 @@ function renderHtml(): string {
 
         for (const run of runs) {
           const button = document.createElement("button");
-          button.className = "run-button";
+          button.className =
+            run.id === state.currentRunId ? "run-button active" : "run-button";
           button.innerHTML = \`<strong>\${run.id}</strong><div class="run-prompt">\${run.sourcePrompt}</div>\`;
           button.addEventListener("click", async () => {
             await loadRun(run.id);
@@ -536,6 +627,7 @@ function renderHtml(): string {
         });
 
         renderArtifacts(payload.artifacts);
+        setView("artifacts");
         setStatus("Artifacts generated.", "ok");
       }
 
@@ -616,6 +708,14 @@ function renderHtml(): string {
         } catch (error) {
           setStatus(error instanceof Error ? error.message : "Failed to delete run.", "error");
         }
+      });
+
+      showSpecButton.addEventListener("click", () => {
+        setView("spec");
+      });
+
+      showArtifactsButton.addEventListener("click", () => {
+        setView("artifacts");
       });
 
       clearRun();
