@@ -11,6 +11,23 @@ export interface PromptParseResponse {
   warnings: string[];
 }
 
+export type PromptParseRunStatus = "completed";
+
+export interface PromptParseRunRecord extends PromptParseResponse {
+  id: string;
+  status: PromptParseRunStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromptParseRunEnvelope {
+  run: PromptParseRunRecord;
+}
+
+export interface PromptParseRunListResponse {
+  runs: PromptParseRunRecord[];
+}
+
 export interface HealthResponse {
   service: string;
   status: "ok";
