@@ -28,6 +28,10 @@ export interface PromptParseRunListResponse {
   runs: PromptParseRunRecord[];
 }
 
+export interface PromptParseRunSpecUpdateRequest {
+  spec: DeploymentSpec;
+}
+
 export interface HealthResponse {
   service: string;
   status: "ok";

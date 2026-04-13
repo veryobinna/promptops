@@ -8,12 +8,15 @@ import type {
   PromptParseResponse,
   PromptParseRunEnvelope,
   PromptParseRunListResponse,
+  PromptParseRunSpecUpdateRequest,
 } from "@promptops/shared-types";
+import { isDeploymentSpec } from "@promptops/shared-types";
 import {
   listPromptParseRuns,
   readPromptParseRun,
   savePromptParseRun,
   toPromptParseRunRecord,
+  updatePromptParseRunSpec,
 } from "./prompt-parse-run-repository.js";
 
 export const apiGatewayManifest = {
@@ -67,6 +70,17 @@ function isPromptParseRequest(value: unknown): value is PromptParseRequest {
     "prompt" in value &&
     typeof value.prompt === "string" &&
     value.prompt.trim().length > 0
+  );
+}
+
+function isPromptParseRunSpecUpdateRequest(
+  value: unknown,
+): value is PromptParseRunSpecUpdateRequest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "spec" in value &&
+    isDeploymentSpec(value.spec)
   );
 }
 
@@ -169,6 +183,38 @@ const server = createServer(async (request, response) => {
         run,
       };
       const result = json(200, payload);
+      response.writeHead(result.statusCode, result.headers);
+      response.end(result.body);
+      return;
+    }
+
+    if (request.method === "PATCH" && runId) {
+      const payload = await readJsonBody(request);
+
+      if (!isPromptParseRunSpecUpdateRequest(payload)) {
+        const result = json(400, {
+          error: "Invalid request body. Expected a valid deployment spec.",
+        });
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      const updatedRun = await updatePromptParseRunSpec(runId, payload.spec);
+
+      if (!updatedRun) {
+        const result = json(404, {
+          error: "Prompt parse run not found.",
+        });
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      const envelope: PromptParseRunEnvelope = {
+        run: updatedRun,
+      };
+      const result = json(200, envelope);
       response.writeHead(result.statusCode, result.headers);
       response.end(result.body);
       return;

@@ -64,6 +64,26 @@ export async function listPromptParseRuns(): Promise<PromptParseRunRecord[]> {
   return runs.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
+export async function updatePromptParseRunSpec(
+  id: string,
+  spec: PromptParseRunRecord["spec"],
+): Promise<PromptParseRunRecord | null> {
+  const existing = await readPromptParseRun(id);
+
+  if (!existing) {
+    return null;
+  }
+
+  const updatedRun: PromptParseRunRecord = {
+    ...existing,
+    spec,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await savePromptParseRun(updatedRun);
+  return updatedRun;
+}
+
 export function toPromptParseRunRecord(
   id: string,
   payload: PromptParseResponse,
