@@ -38,13 +38,13 @@ function renderHtml(): string {
     <title>PromptOps Review</title>
     <style>
       :root {
-        --ink: #19212b;
-        --accent: #1f5fbf;
-        --border: #d6dde7;
-        --surface: #f3f5f8;
+        --ink: #18212b;
+        --accent: #22344a;
+        --border: #dde3ea;
+        --surface: #f6f7f9;
         --panel: #ffffff;
-        --panel-muted: #f8fafc;
-        --muted: #617285;
+        --panel-muted: #fafbfc;
+        --muted: #6a7889;
         --success: #13714d;
         --danger: #a43737;
       }
@@ -61,52 +61,63 @@ function renderHtml(): string {
       }
 
       .page {
-        width: min(1120px, calc(100vw - 32px));
+        width: min(1080px, calc(100vw - 32px));
         margin: 0 auto;
-        padding: 24px 0 40px;
+        padding: 20px 0 32px;
       }
 
-      .hero {
-        display: grid;
-        gap: 4px;
+      .topbar {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
         margin-bottom: 14px;
       }
 
-      h1 {
+      .brand {
         margin: 0;
-        font-size: clamp(24px, 3vw, 32px);
-        line-height: 1.12;
+        font-size: 14px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
       }
 
-      .lede {
-        max-width: 52ch;
+      .status {
         color: var(--muted);
-        font-size: 13px;
-        line-height: 1.5;
+        font-size: 12px;
+        min-height: 18px;
       }
 
       .layout {
         display: grid;
-        grid-template-columns: 340px minmax(0, 1fr);
-        gap: 16px;
+        grid-template-columns: 272px minmax(0, 1fr);
+        gap: 12px;
         align-items: start;
       }
 
       .panel {
         background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 18px;
-        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        border-radius: 14px;
+        box-shadow: 0 1px 1px rgba(16, 24, 40, 0.03);
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 20px;
       }
 
       .panel-inner {
-        padding: 16px;
+        padding: 14px;
       }
 
       .section-title {
-        margin: 0 0 10px;
-        font-size: 16px;
+        margin: 0 0 8px;
+        font-size: 13px;
         font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
       }
 
       .subtle {
@@ -124,23 +135,31 @@ function renderHtml(): string {
       textarea {
         width: 100%;
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 10px;
         background: var(--panel-muted);
         color: var(--ink);
-        padding: 12px 14px;
+        padding: 11px 12px;
         resize: vertical;
       }
 
       .prompt-input {
-        min-height: 128px;
-        margin: 10px 0 12px;
+        min-height: 112px;
+        margin: 8px 0 10px;
       }
 
       .spec-input {
-        min-height: 420px;
-        margin-top: 10px;
+        min-height: 300px;
+        margin-top: 8px;
         font-family: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
         font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .artifact-input {
+        min-height: 220px;
+        margin-top: 8px;
+        font-family: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
+        font-size: 12px;
         line-height: 1.6;
       }
 
@@ -150,36 +169,34 @@ function renderHtml(): string {
         flex-wrap: wrap;
       }
 
+      .sidebar-actions {
+        display: grid;
+      }
+
       button {
         border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 8px 12px;
-        font-weight: 500;
+        border-radius: 999px;
+        padding: 7px 11px;
+        font-weight: 400;
         cursor: pointer;
-        transition: background-color 120ms ease, border-color 120ms ease;
+        background: #fff;
+        color: var(--ink);
+        transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
       }
 
       .primary {
-        background: var(--accent);
-        border-color: var(--accent);
+        background: var(--ink);
+        border-color: var(--ink);
         color: #fff;
       }
 
       .secondary {
-        background: #fff;
-        color: var(--ink);
+        background: transparent;
       }
 
       .danger {
-        background: #fff;
+        background: transparent;
         color: var(--danger);
-      }
-
-      .status {
-        margin-top: 12px;
-        min-height: 24px;
-        color: var(--muted);
-        font-size: 14px;
       }
 
       .status.ok {
@@ -192,34 +209,37 @@ function renderHtml(): string {
 
       .stack {
         display: grid;
-        gap: 14px;
-      }
-
-      .meta-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
       }
 
-      .meta-card {
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        background: var(--panel-muted);
-        padding: 12px;
+      .main-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
       }
 
-      .meta-label {
+      .run-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
         font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
         color: var(--muted);
-        margin-bottom: 6px;
       }
 
-      .meta-value {
-        font-size: 13px;
-        line-height: 1.45;
-        word-break: break-word;
+      .run-meta strong {
+        color: var(--ink);
+        font-weight: 500;
+      }
+
+      .detail-block {
+        display: none;
+        border-top: 1px solid var(--border);
+        padding-top: 10px;
+      }
+
+      .detail-block.visible {
+        display: block;
       }
 
       ul {
@@ -234,21 +254,26 @@ function renderHtml(): string {
       .runs {
         display: grid;
         gap: 8px;
-        margin-top: 10px;
+        margin-top: 8px;
       }
 
       .run-button {
         width: 100%;
         text-align: left;
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 10px 12px;
+        border-radius: 10px;
+        padding: 10px;
+        background: transparent;
       }
 
       .run-button strong {
         display: block;
         margin-bottom: 2px;
+        font-weight: 500;
+      }
+
+      .run-button.active {
+        background: var(--panel-muted);
+        border-color: #c9d3df;
       }
 
       .run-prompt {
@@ -262,12 +287,67 @@ function renderHtml(): string {
         font-size: 14px;
       }
 
+      .artifact-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .viewer-switch {
+        display: inline-flex;
+        gap: 4px;
+        padding: 3px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--panel-muted);
+      }
+
+      .switch-button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 6px 10px;
+      }
+
+      .switch-button.active {
+        background: #fff;
+        color: var(--ink);
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+      }
+
+      .viewer-pane {
+        display: none;
+      }
+
+      .viewer-pane.active {
+        display: block;
+      }
+
+      .artifact-button {
+        width: 100%;
+        text-align: left;
+        border-radius: 10px;
+        padding: 8px 10px;
+      }
+
+      .artifact-button.active {
+        background: var(--panel-muted);
+        border-color: #c9d3df;
+      }
+
+      .artifact-path {
+        font-family: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
+        font-size: 12px;
+      }
+
+      .artifact-type {
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
       @media (max-width: 900px) {
         .layout {
-          grid-template-columns: 1fr;
-        }
-
-        .meta-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -275,55 +355,60 @@ function renderHtml(): string {
   </head>
   <body>
     <main class="page">
-      <section class="hero">
-        <h1>PromptOps review console</h1>
-        <div class="lede">Submit a prompt, review the spec, keep or delete the run.</div>
-      </section>
+      <header class="topbar">
+        <h1 class="brand">PromptOps</h1>
+        <div id="statusMessage" class="status">Idle.</div>
+      </header>
 
       <section class="layout">
-        <aside class="panel">
+        <aside class="panel sidebar">
           <div class="panel-inner">
-            <h2 class="section-title">Prompt Input</h2>
+            <h2 class="section-title">New Run</h2>
             <textarea id="promptInput" class="prompt-input">Deploy a scalable Node.js API with PostgreSQL, CI/CD, monitoring, logging, and cost estimation</textarea>
-            <div class="actions">
-              <button id="submitPromptButton" class="primary">Generate Spec</button>
+            <div class="sidebar-actions">
+              <button id="submitPromptButton" class="primary">Generate</button>
             </div>
-            <div id="statusMessage" class="status">Idle.</div>
 
-            <h2 class="section-title" style="margin-top: 22px;">Saved Runs</h2>
+            <h2 class="section-title" style="margin-top: 18px;">Runs</h2>
             <div id="savedRuns" class="runs"></div>
           </div>
         </aside>
 
         <section class="panel">
           <div class="panel-inner stack">
-            <div>
-              <h2 class="section-title">Run Summary</h2>
-              <div id="runMeta" class="meta-grid">
-                <div class="meta-card"><div class="meta-label">Status</div><div id="runStatus" class="meta-value">No run selected</div></div>
-                <div class="meta-card"><div class="meta-label">Run ID</div><div id="runId" class="meta-value">-</div></div>
-                <div class="meta-card"><div class="meta-label">Created</div><div id="runCreatedAt" class="meta-value">-</div></div>
-                <div class="meta-card"><div class="meta-label">Updated</div><div id="runUpdatedAt" class="meta-value">-</div></div>
+            <div class="main-header">
+              <h2 class="section-title" style="margin: 0;">Selected Run</h2>
+              <div class="viewer-switch" role="tablist" aria-label="Review views">
+                <button id="showSpecButton" class="switch-button active" type="button">Spec</button>
+                <button id="showArtifactsButton" class="switch-button" type="button">Artifacts</button>
               </div>
             </div>
 
             <div>
-              <h2 class="section-title">Assumptions</h2>
-              <ul id="assumptionsList" class="subtle"><li>No run selected yet.</li></ul>
+              <div id="runMeta" class="run-meta">
+                <span>Status <strong id="runStatus">No run selected</strong></span>
+                <span>ID <strong id="runId">-</strong></span>
+                <span>Updated <strong id="runUpdatedAt">-</strong></span>
+              </div>
             </div>
 
-            <div>
-              <h2 class="section-title">Warnings</h2>
-              <ul id="warningsList" class="subtle"><li>No warnings yet.</li></ul>
+            <div id="notesBlock" class="detail-block">
+              <h2 class="section-title">Notes</h2>
+              <ul id="notesList" class="subtle"><li>No notes.</li></ul>
             </div>
 
-            <div>
-              <h2 class="section-title">Spec</h2>
+            <div id="specPane" class="viewer-pane active">
               <textarea id="specEditor" class="spec-input" spellcheck="false">{}</textarea>
               <div class="actions" style="margin-top: 12px;">
                 <button id="saveSpecButton" class="primary">Save</button>
+                <button id="generateArtifactsButton" class="secondary">Artifacts</button>
                 <button id="deleteRunButton" class="danger">Delete</button>
               </div>
+            </div>
+
+            <div id="artifactsPane" class="viewer-pane">
+              <div id="artifactList" class="artifact-list"></div>
+              <textarea id="artifactViewer" class="artifact-input" spellcheck="false" readonly>No artifacts generated yet.</textarea>
             </div>
           </div>
         </section>
@@ -334,28 +419,46 @@ function renderHtml(): string {
       const apiGatewayUrl = "${apiUrl}";
       const state = {
         currentRunId: null,
+        currentView: "spec",
+        currentArtifactPath: null,
+        runs: [],
       };
 
       const promptInput = document.getElementById("promptInput");
       const specEditor = document.getElementById("specEditor");
       const statusMessage = document.getElementById("statusMessage");
       const savedRuns = document.getElementById("savedRuns");
-      const assumptionsList = document.getElementById("assumptionsList");
-      const warningsList = document.getElementById("warningsList");
+      const notesBlock = document.getElementById("notesBlock");
+      const notesList = document.getElementById("notesList");
       const runStatus = document.getElementById("runStatus");
       const runId = document.getElementById("runId");
-      const runCreatedAt = document.getElementById("runCreatedAt");
       const runUpdatedAt = document.getElementById("runUpdatedAt");
+      const artifactList = document.getElementById("artifactList");
+      const artifactViewer = document.getElementById("artifactViewer");
+      const specPane = document.getElementById("specPane");
+      const artifactsPane = document.getElementById("artifactsPane");
+      const showSpecButton = document.getElementById("showSpecButton");
+      const showArtifactsButton = document.getElementById("showArtifactsButton");
+
+      function setView(view) {
+        state.currentView = view;
+        specPane.className = view === "spec" ? "viewer-pane active" : "viewer-pane";
+        artifactsPane.className = view === "artifacts" ? "viewer-pane active" : "viewer-pane";
+        showSpecButton.className = view === "spec" ? "switch-button active" : "switch-button";
+        showArtifactsButton.className =
+          view === "artifacts" ? "switch-button active" : "switch-button";
+      }
 
       function clearRun() {
         state.currentRunId = null;
+        state.currentArtifactPath = null;
         runStatus.textContent = "No run selected";
         runId.textContent = "-";
-        runCreatedAt.textContent = "-";
         runUpdatedAt.textContent = "-";
         specEditor.value = "{}";
-        renderList(assumptionsList, [], "No run selected yet.");
-        renderList(warningsList, [], "No warnings yet.");
+        renderNotes([], []);
+        renderArtifacts(null);
+        setView("spec");
       }
 
       function setStatus(message, tone = "neutral") {
@@ -380,18 +483,65 @@ function renderHtml(): string {
         }
       }
 
+      function renderNotes(assumptions, warnings) {
+        const notes = [
+          ...warnings.map((item) => "Warning: " + item),
+          ...assumptions.map((item) => "Assumption: " + item),
+        ];
+
+        if (!notes.length) {
+          notesBlock.className = "detail-block";
+          notesList.innerHTML = "";
+          return;
+        }
+
+        notesBlock.className = "detail-block visible";
+        renderList(notesList, notes, "No notes.");
+      }
+
       function renderRun(run) {
         state.currentRunId = run.id;
         runStatus.textContent = run.status;
         runId.textContent = run.id;
-        runCreatedAt.textContent = new Date(run.createdAt).toLocaleString();
         runUpdatedAt.textContent = new Date(run.updatedAt).toLocaleString();
         specEditor.value = JSON.stringify(run.spec, null, 2);
-        renderList(assumptionsList, run.assumptions, "No assumptions recorded.");
-        renderList(warningsList, run.warnings, "No warnings recorded.");
+        renderNotes(run.assumptions, run.warnings);
+        renderSavedRuns(state.runs);
+      }
+
+      function renderArtifacts(artifacts) {
+        artifactList.innerHTML = "";
+
+        if (!artifacts || !artifacts.files.length) {
+          state.currentArtifactPath = null;
+          artifactList.innerHTML = '<div class="empty">No artifacts generated yet.</div>';
+          artifactViewer.value = "No artifacts generated yet.";
+          return;
+        }
+
+        const selectedFile =
+          artifacts.files.find((file) => file.path === state.currentArtifactPath) ?? artifacts.files[0];
+
+        state.currentArtifactPath = selectedFile.path;
+        artifactViewer.value = selectedFile.content;
+
+        for (const file of artifacts.files) {
+          const button = document.createElement("button");
+          button.className =
+            file.path === state.currentArtifactPath ? "artifact-button active" : "artifact-button";
+          button.innerHTML =
+            \`<div class="artifact-path">\${file.path}</div><div class="artifact-type">\${file.type}</div>\`;
+          button.addEventListener("click", () => {
+            state.currentArtifactPath = file.path;
+            artifactViewer.value = file.content;
+            renderArtifacts(artifacts);
+          });
+          artifactList.appendChild(button);
+        }
       }
 
       function renderSavedRuns(runs) {
+        state.runs = runs;
         savedRuns.innerHTML = "";
 
         if (!runs.length) {
@@ -401,7 +551,8 @@ function renderHtml(): string {
 
         for (const run of runs) {
           const button = document.createElement("button");
-          button.className = "run-button";
+          button.className =
+            run.id === state.currentRunId ? "run-button active" : "run-button";
           button.innerHTML = \`<strong>\${run.id}</strong><div class="run-prompt">\${run.sourcePrompt}</div>\`;
           button.addEventListener("click", async () => {
             await loadRun(run.id);
@@ -430,6 +581,7 @@ function renderHtml(): string {
         setStatus("Loading saved run...");
         const payload = await fetchJson(\`\${apiGatewayUrl}/api/prompt-runs/\${encodeURIComponent(id)}\`);
         renderRun(payload.run);
+        await loadArtifacts(id);
         setStatus("Loaded saved run.", "ok");
       }
 
@@ -448,6 +600,35 @@ function renderHtml(): string {
         renderRun(payload.run);
         await refreshRuns();
         setStatus("Spec generated and saved.", "ok");
+      }
+
+      async function loadArtifacts(id, failSilently = true) {
+        try {
+          const payload = await fetchJson(\`\${apiGatewayUrl}/api/prompt-runs/\${encodeURIComponent(id)}/artifacts\`);
+          renderArtifacts(payload.artifacts);
+        } catch (error) {
+          if (!failSilently) {
+            throw error;
+          }
+
+          renderArtifacts(null);
+        }
+      }
+
+      async function generateArtifacts() {
+        if (!state.currentRunId) {
+          setStatus("No run selected yet.");
+          return;
+        }
+
+        setStatus("Generating artifacts...");
+        const payload = await fetchJson(\`\${apiGatewayUrl}/api/prompt-runs/\${encodeURIComponent(state.currentRunId)}/artifacts\`, {
+          method: "POST",
+        });
+
+        renderArtifacts(payload.artifacts);
+        setView("artifacts");
+        setStatus("Artifacts generated.", "ok");
       }
 
       async function saveSpec() {
@@ -513,12 +694,28 @@ function renderHtml(): string {
         }
       });
 
+      document.getElementById("generateArtifactsButton").addEventListener("click", async () => {
+        try {
+          await generateArtifacts();
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : "Failed to generate artifacts.", "error");
+        }
+      });
+
       document.getElementById("deleteRunButton").addEventListener("click", async () => {
         try {
           await deleteRun();
         } catch (error) {
           setStatus(error instanceof Error ? error.message : "Failed to delete run.", "error");
         }
+      });
+
+      showSpecButton.addEventListener("click", () => {
+        setView("spec");
+      });
+
+      showArtifactsButton.addEventListener("click", () => {
+        setView("artifacts");
       });
 
       clearRun();

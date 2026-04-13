@@ -4,9 +4,13 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import type {
+  ArtifactGenerationRequest,
+  ArtifactGenerationResponse,
+  GeneratedArtifactBundle,
   HealthResponse,
   PromptParseRequest,
   PromptParseResponse,
+  PromptRunArtifactEnvelope,
   PromptParseRunEnvelope,
   PromptParseRunListResponse,
   PromptParseRunSpecUpdateRequest,
@@ -20,6 +24,11 @@ import {
   toPromptParseRunRecord,
   updatePromptParseRunSpec,
 } from "./prompt-parse-run-repository.js";
+import {
+  deleteGeneratedArtifacts,
+  readGeneratedArtifacts,
+  saveGeneratedArtifacts,
+} from "./generated-artifact-repository.js";
 
 export const apiGatewayManifest = {
   name: "api-gateway",
@@ -150,11 +159,76 @@ async function requestSpecGeneration(
   });
 }
 
+async function requestArtifactGeneration(
+  payload: ArtifactGenerationRequest,
+  serviceUrl = generatorBaseUrl(),
+): Promise<ArtifactGenerationResponse> {
+  const baseUrl = new URL(serviceUrl);
+
+  return await new Promise<ArtifactGenerationResponse>((resolve, reject) => {
+    const upstream = httpRequest(
+      {
+        protocol: baseUrl.protocol,
+        hostname: baseUrl.hostname,
+        port: baseUrl.port,
+        path: "/internal/artifacts/generate",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+      },
+      (upstreamResponse) => {
+        const chunks: Buffer[] = [];
+
+        upstreamResponse.on("data", (chunk) => {
+          chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+        });
+
+        upstreamResponse.on("end", () => {
+          try {
+            const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8")) as
+              | ArtifactGenerationResponse
+              | { error: string };
+
+            if ((upstreamResponse.statusCode ?? 500) >= 400) {
+              const message = "error" in parsed ? parsed.error : "Artifact generation request failed.";
+              reject(new Error(message));
+              return;
+            }
+
+            resolve(parsed as ArtifactGenerationResponse);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      },
+    );
+
+    upstream.on("error", reject);
+    upstream.write(JSON.stringify(payload));
+    upstream.end();
+  });
+}
+
 type SpecGenerationRequester = (payload: PromptParseRequest) => Promise<PromptParseResponse>;
+type ArtifactGenerationRequester = (
+  payload: ArtifactGenerationRequest,
+) => Promise<ArtifactGenerationResponse>;
+
+function promptParseRunArtifactIdFromUrl(url: string | undefined): string | null {
+  if (!url) {
+    return null;
+  }
+
+  const match = /^\/api\/prompt-runs\/([^/]+)\/artifacts$/.exec(url);
+  const runId = match?.[1];
+  return runId ? decodeURIComponent(runId) : null;
+}
 
 export function createApiGatewayHandler(options?: {
   generatorServiceUrl?: string;
   requestSpecGeneration?: SpecGenerationRequester;
+  requestArtifactGeneration?: ArtifactGenerationRequester;
 }) {
   return async (request: IncomingMessage, response: NodeJS.WritableStream & {
     writeHead(statusCode: number, headers: Record<string, string>): void;
@@ -187,6 +261,58 @@ export function createApiGatewayHandler(options?: {
           runs: await listPromptParseRuns(),
         };
         const result = json(200, payload);
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      const artifactRunId = promptParseRunArtifactIdFromUrl(request.url);
+
+      if (request.method === "GET" && artifactRunId) {
+        const artifacts = await readGeneratedArtifacts(artifactRunId);
+
+        if (!artifacts) {
+          const result = json(404, {
+            error: "Generated artifacts not found for this run.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const envelope: PromptRunArtifactEnvelope = {
+          artifacts,
+        };
+        const result = json(200, envelope);
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      if (request.method === "POST" && artifactRunId) {
+        const run = await readPromptParseRun(artifactRunId);
+
+        if (!run) {
+          const result = json(404, {
+            error: "Prompt parse run not found.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const generatedArtifacts = await (options?.requestArtifactGeneration ??
+          ((payload) => requestArtifactGeneration(payload, options?.generatorServiceUrl)))({
+          runId: run.id,
+          spec: run.spec,
+        });
+
+        await saveGeneratedArtifacts(generatedArtifacts.artifacts);
+
+        const envelope: PromptRunArtifactEnvelope = {
+          artifacts: generatedArtifacts.artifacts,
+        };
+        const result = json(200, envelope);
         response.writeHead(result.statusCode, result.headers);
         response.end(result.body);
         return;
@@ -259,6 +385,8 @@ export function createApiGatewayHandler(options?: {
           return;
         }
 
+        await deleteGeneratedArtifacts(runId);
+
         const result = json(200, {
           deleted: true,
           id: runId,
@@ -314,6 +442,7 @@ export function createApiGatewayHandler(options?: {
 export function createApiGatewayServer(options?: {
   generatorServiceUrl?: string;
   requestSpecGeneration?: SpecGenerationRequester;
+  requestArtifactGeneration?: ArtifactGenerationRequester;
 }) {
   return createServer(createApiGatewayHandler(options));
 }

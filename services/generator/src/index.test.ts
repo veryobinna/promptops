@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildSpecFromPrompt } from "./index.js";
+import { buildArtifactsFromSpec, buildSpecFromPrompt } from "./index.js";
 
 test("buildSpecFromPrompt enables requested capabilities from the prompt", () => {
   const result = buildSpecFromPrompt(
@@ -40,6 +40,34 @@ test("buildSpecFromPrompt applies defaults when the prompt is underspecified", (
     result.warnings.includes(
       "Prompt did not explicitly mention PostgreSQL; using the default managed PostgreSQL profile.",
     ),
+    true,
+  );
+});
+
+test("buildArtifactsFromSpec produces deterministic terraform and workflow files", () => {
+  const spec = buildSpecFromPrompt(
+    "Deploy a scalable Node.js API with PostgreSQL, CI/CD, monitoring, logging, and cost estimation",
+  ).spec;
+
+  const artifacts = buildArtifactsFromSpec("run-123", spec, "2026-01-01T00:00:00.000Z");
+
+  assert.equal(artifacts.runId, "run-123");
+  assert.equal(artifacts.files.length, 4);
+  assert.deepEqual(
+    artifacts.files.map((file) => file.path),
+    [
+      "terraform/main.tf",
+      "terraform/variables.tf",
+      "terraform/outputs.tf",
+      ".github/workflows/deploy.yml",
+    ],
+  );
+  assert.equal(
+    artifacts.files.some((file) => file.content.includes('desired_count        = 2')),
+    true,
+  );
+  assert.equal(
+    artifacts.files.some((file) => file.content.includes("hashicorp/setup-terraform@v3")),
     true,
   );
 });
