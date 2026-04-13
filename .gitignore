@@ -38,3 +38,4 @@ tmp/
 
 # Preserve existing docs ignore rule
 /docs
+/localdocs
