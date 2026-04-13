@@ -35,6 +35,8 @@ override.tf.json
 .vscode/
 tmp/
 .tmp/
+.promptops-data/
 
 # Preserve existing docs ignore rule
 /docs
+/localdocs
