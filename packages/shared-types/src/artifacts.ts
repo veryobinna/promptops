@@ -1,18 +1,30 @@
-export const GENERATED_ARTIFACT_TYPES = [
-  "deployment_spec",
-  "terraform_bundle",
-  "github_actions_workflow",
-  "cost_estimate_report",
-  "deployment_run_log",
-] as const;
+import type { DeploymentSpec } from "./deployment-spec.js";
 
-export type GeneratedArtifactType = (typeof GENERATED_ARTIFACT_TYPES)[number];
+export const GENERATED_ARTIFACT_FILE_TYPES = ["terraform", "github_actions"] as const;
 
-export interface GeneratedArtifact {
-  id: string;
-  projectId: string;
+export type GeneratedArtifactFileType = (typeof GENERATED_ARTIFACT_FILE_TYPES)[number];
+
+export interface GeneratedArtifactFile {
+  path: string;
+  type: GeneratedArtifactFileType;
+  content: string;
+}
+
+export interface GeneratedArtifactBundle {
   runId: string;
-  artifactType: GeneratedArtifactType;
-  storagePath: string;
-  checksum: string;
+  createdAt: string;
+  files: GeneratedArtifactFile[];
+}
+
+export interface ArtifactGenerationRequest {
+  runId: string;
+  spec: DeploymentSpec;
+}
+
+export interface ArtifactGenerationResponse {
+  artifacts: GeneratedArtifactBundle;
+}
+
+export interface PromptRunArtifactEnvelope {
+  artifacts: GeneratedArtifactBundle;
 }

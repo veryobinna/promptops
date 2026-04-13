@@ -7,7 +7,7 @@ import test from "node:test";
 
 import type { IncomingMessage } from "node:http";
 
-import type { PromptParseResponse } from "@promptops/shared-types";
+import type { ArtifactGenerationResponse, PromptParseResponse } from "@promptops/shared-types";
 import { createApiGatewayHandler } from "./index.js";
 
 type MockResponse = {
@@ -102,6 +102,24 @@ test("api-gateway creates and updates a persisted prompt parse run", async () =>
 
   const handler = createApiGatewayHandler({
     requestSpecGeneration: async () => generatedPayload,
+    requestArtifactGeneration: async ({ runId }): Promise<ArtifactGenerationResponse> => ({
+      artifacts: {
+        runId,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        files: [
+          {
+            path: "terraform/main.tf",
+            type: "terraform",
+            content: 'resource "aws_ecs_cluster" "app" {}',
+          },
+          {
+            path: ".github/workflows/deploy.yml",
+            type: "github_actions",
+            content: "name: deploy",
+          },
+        ],
+      },
+    }),
   });
 
   try {
@@ -198,6 +216,30 @@ test("api-gateway creates and updates a persisted prompt parse run", async () =>
     assert.equal(fetchedPayload.run.id, createdPayload.run.id);
     assert.equal(fetchedPayload.run.spec.compute.desiredCount, 3);
 
+    const createArtifactsResponse = await invokeHandler(
+      handler,
+      "POST",
+      `/api/prompt-runs/${encodeURIComponent(createdPayload.run.id)}/artifacts`,
+    );
+    assert.equal(createArtifactsResponse.statusCode, 200);
+
+    const fetchArtifactsResponse = await invokeHandler(
+      handler,
+      "GET",
+      `/api/prompt-runs/${encodeURIComponent(createdPayload.run.id)}/artifacts`,
+    );
+    assert.equal(fetchArtifactsResponse.statusCode, 200);
+
+    const fetchedArtifactsPayload = JSON.parse(fetchArtifactsResponse.body) as {
+      artifacts: {
+        runId: string;
+        files: Array<{ path: string }>;
+      };
+    };
+
+    assert.equal(fetchedArtifactsPayload.artifacts.runId, createdPayload.run.id);
+    assert.equal(fetchedArtifactsPayload.artifacts.files.length, 2);
+
     const deleteResponse = await invokeHandler(
       handler,
       "DELETE",
@@ -211,6 +253,13 @@ test("api-gateway creates and updates a persisted prompt parse run", async () =>
       `/api/prompt-runs/${encodeURIComponent(createdPayload.run.id)}`,
     );
     assert.equal(afterDeleteResponse.statusCode, 404);
+
+    const afterDeleteArtifactsResponse = await invokeHandler(
+      handler,
+      "GET",
+      `/api/prompt-runs/${encodeURIComponent(createdPayload.run.id)}/artifacts`,
+    );
+    assert.equal(afterDeleteArtifactsResponse.statusCode, 404);
   } finally {
     await rm(dataDir, {
       recursive: true,

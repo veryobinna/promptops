@@ -3,11 +3,16 @@ import type { IncomingMessage } from "node:http";
 import { fileURLToPath } from "node:url";
 
 import type {
+  ArtifactGenerationRequest,
+  ArtifactGenerationResponse,
   DeploymentSpec,
+  GeneratedArtifactBundle,
+  GeneratedArtifactFile,
   HealthResponse,
   PromptParseRequest,
   PromptParseResponse,
 } from "@promptops/shared-types";
+import { isDeploymentSpec } from "@promptops/shared-types";
 
 export const generatorManifest = {
   name: "generator",
@@ -55,6 +60,18 @@ function isPromptParseRequest(value: unknown): value is PromptParseRequest {
     "prompt" in value &&
     typeof value.prompt === "string" &&
     value.prompt.trim().length > 0
+  );
+}
+
+function isArtifactGenerationRequest(value: unknown): value is ArtifactGenerationRequest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "runId" in value &&
+    typeof value.runId === "string" &&
+    value.runId.trim().length > 0 &&
+    "spec" in value &&
+    isDeploymentSpec(value.spec)
   );
 }
 
@@ -141,6 +158,157 @@ export function buildSpecFromPrompt(prompt: string): PromptParseResponse {
   };
 }
 
+function terraformMainTf(spec: DeploymentSpec): string {
+  return `terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+resource "aws_ecs_cluster" "app" {
+  name = var.service_name
+}
+
+resource "aws_db_instance" "postgres" {
+  identifier             = "\${var.service_name}-postgres"
+  engine                 = "postgres"
+  instance_class         = var.db_instance_class
+  allocated_storage      = 20
+  db_name                = "app"
+  username               = var.db_username
+  password               = var.db_password
+  skip_final_snapshot    = true
+  publicly_accessible    = false
+  deletion_protection    = false
+}
+
+module "service" {
+  source               = "./modules/service"
+  service_name         = var.service_name
+  container_port       = ${spec.application.port}
+  desired_count        = ${spec.compute.desiredCount}
+  autoscaling_enabled  = ${spec.compute.autoscaling}
+  deploy_on_merge      = ${spec.delivery.deployOnMerge}
+  metrics_enabled      = ${spec.observability.metrics}
+  dashboards_enabled   = ${spec.observability.dashboards}
+  tracing_mode         = "${spec.observability.tracing}"
+  logging_backend      = "${spec.observability.logging}"
+}
+`;
+}
+
+function terraformVariablesTf(): string {
+  return `variable "aws_region" {
+  type    = string
+  default = "us-east-1"
+}
+
+variable "service_name" {
+  type    = string
+  default = "promptops-app"
+}
+
+variable "db_instance_class" {
+  type    = string
+  default = "db.t4g.micro"
+}
+
+variable "db_username" {
+  type    = string
+  default = "appuser"
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+`;
+}
+
+function terraformOutputsTf(): string {
+  return `output "ecs_cluster_name" {
+  value = aws_ecs_cluster.app.name
+}
+
+output "database_endpoint" {
+  value = aws_db_instance.postgres.address
+}
+`;
+}
+
+function githubActionsWorkflow(spec: DeploymentSpec): string {
+  return `name: deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init
+      - run: terraform validate
+
+  deploy:
+    if: ${spec.delivery.deployOnMerge}
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init
+      - run: terraform plan
+`;
+}
+
+export function buildArtifactsFromSpec(
+  runId: string,
+  spec: DeploymentSpec,
+  createdAt = new Date().toISOString(),
+): GeneratedArtifactBundle {
+  const files: GeneratedArtifactFile[] = [
+    {
+      path: "terraform/main.tf",
+      type: "terraform",
+      content: terraformMainTf(spec),
+    },
+    {
+      path: "terraform/variables.tf",
+      type: "terraform",
+      content: terraformVariablesTf(),
+    },
+    {
+      path: "terraform/outputs.tf",
+      type: "terraform",
+      content: terraformOutputsTf(),
+    },
+    {
+      path: ".github/workflows/deploy.yml",
+      type: "github_actions",
+      content: githubActionsWorkflow(spec),
+    },
+  ];
+
+  return {
+    runId,
+    createdAt,
+    files,
+  };
+}
+
 export function createGeneratorServer() {
   return createServer(async (request, response) => {
     try {
@@ -168,6 +336,26 @@ export function createGeneratorServer() {
         }
 
         const result = json(200, buildSpecFromPrompt(payload.prompt.trim()));
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      if (request.method === "POST" && request.url === "/internal/artifacts/generate") {
+        const payload = await readJsonBody(request);
+
+        if (!isArtifactGenerationRequest(payload)) {
+          const result = json(400, {
+            error: "Invalid request body. Expected runId and a valid deployment spec.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const result = json<ArtifactGenerationResponse>(200, {
+          artifacts: buildArtifactsFromSpec(payload.runId.trim(), payload.spec),
+        });
         response.writeHead(result.statusCode, result.headers);
         response.end(result.body);
         return;
