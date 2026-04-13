@@ -63,26 +63,26 @@ function renderHtml(): string {
       .page {
         width: min(1120px, calc(100vw - 32px));
         margin: 0 auto;
-        padding: 32px 0 48px;
+        padding: 24px 0 40px;
       }
 
       .hero {
         display: grid;
-        gap: 8px;
-        margin-bottom: 20px;
+        gap: 4px;
+        margin-bottom: 14px;
       }
 
       h1 {
         margin: 0;
-        font-size: clamp(28px, 4vw, 40px);
-        line-height: 1.08;
+        font-size: clamp(24px, 3vw, 32px);
+        line-height: 1.12;
       }
 
       .lede {
-        max-width: 70ch;
+        max-width: 52ch;
         color: var(--muted);
-        font-size: 15px;
-        line-height: 1.6;
+        font-size: 13px;
+        line-height: 1.5;
       }
 
       .layout {
@@ -100,7 +100,7 @@ function renderHtml(): string {
       }
 
       .panel-inner {
-        padding: 18px;
+        padding: 16px;
       }
 
       .section-title {
@@ -111,7 +111,7 @@ function renderHtml(): string {
 
       .subtle {
         color: var(--muted);
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.5;
       }
 
@@ -132,13 +132,13 @@ function renderHtml(): string {
       }
 
       .prompt-input {
-        min-height: 152px;
-        margin: 12px 0 14px;
+        min-height: 128px;
+        margin: 10px 0 12px;
       }
 
       .spec-input {
-        min-height: 460px;
-        margin-top: 12px;
+        min-height: 420px;
+        margin-top: 10px;
         font-family: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
         font-size: 13px;
         line-height: 1.6;
@@ -146,15 +146,15 @@ function renderHtml(): string {
 
       .actions {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
       }
 
       button {
         border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 10px 14px;
-        font-weight: 600;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-weight: 500;
         cursor: pointer;
         transition: background-color 120ms ease, border-color 120ms ease;
       }
@@ -168,6 +168,11 @@ function renderHtml(): string {
       .secondary {
         background: #fff;
         color: var(--ink);
+      }
+
+      .danger {
+        background: #fff;
+        color: var(--danger);
       }
 
       .status {
@@ -187,7 +192,7 @@ function renderHtml(): string {
 
       .stack {
         display: grid;
-        gap: 16px;
+        gap: 14px;
       }
 
       .meta-grid {
@@ -200,7 +205,7 @@ function renderHtml(): string {
         border: 1px solid var(--border);
         border-radius: 14px;
         background: var(--panel-muted);
-        padding: 14px;
+        padding: 12px;
       }
 
       .meta-label {
@@ -212,7 +217,7 @@ function renderHtml(): string {
       }
 
       .meta-value {
-        font-size: 14px;
+        font-size: 13px;
         line-height: 1.45;
         word-break: break-word;
       }
@@ -228,8 +233,8 @@ function renderHtml(): string {
 
       .runs {
         display: grid;
-        gap: 10px;
-        margin-top: 12px;
+        gap: 8px;
+        margin-top: 10px;
       }
 
       .run-button {
@@ -238,12 +243,18 @@ function renderHtml(): string {
         background: #fff;
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 12px 14px;
+        padding: 10px 12px;
       }
 
       .run-button strong {
         display: block;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
+      }
+
+      .run-prompt {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
       }
 
       .empty {
@@ -266,25 +277,20 @@ function renderHtml(): string {
     <main class="page">
       <section class="hero">
         <h1>PromptOps review console</h1>
-        <div class="lede">
-          Submit a deployment request, inspect the normalized spec, adjust it if needed, and save the result back through the gateway.
-        </div>
+        <div class="lede">Submit a prompt, review the spec, keep or delete the run.</div>
       </section>
 
       <section class="layout">
         <aside class="panel">
           <div class="panel-inner">
             <h2 class="section-title">Prompt Input</h2>
-            <div class="subtle">The gateway forwards this request to the generator service and stores the returned run locally.</div>
             <textarea id="promptInput" class="prompt-input">Deploy a scalable Node.js API with PostgreSQL, CI/CD, monitoring, logging, and cost estimation</textarea>
             <div class="actions">
               <button id="submitPromptButton" class="primary">Generate Spec</button>
-              <button id="refreshRunsButton" class="secondary">Refresh Runs</button>
             </div>
             <div id="statusMessage" class="status">Idle.</div>
 
-            <h2 class="section-title" style="margin-top: 26px;">Saved Runs</h2>
-            <div class="subtle">Select a saved run to reload it into the review panel.</div>
+            <h2 class="section-title" style="margin-top: 22px;">Saved Runs</h2>
             <div id="savedRuns" class="runs"></div>
           </div>
         </aside>
@@ -312,12 +318,11 @@ function renderHtml(): string {
             </div>
 
             <div>
-              <h2 class="section-title">Editable Spec</h2>
-              <div class="subtle">Edit the JSON directly, then save the updated spec back through the gateway.</div>
+              <h2 class="section-title">Spec</h2>
               <textarea id="specEditor" class="spec-input" spellcheck="false">{}</textarea>
               <div class="actions" style="margin-top: 12px;">
-                <button id="saveSpecButton" class="primary">Save Spec Changes</button>
-                <button id="reloadRunButton" class="secondary">Reload Current Run</button>
+                <button id="saveSpecButton" class="primary">Save</button>
+                <button id="deleteRunButton" class="danger">Delete</button>
               </div>
             </div>
           </div>
@@ -341,6 +346,17 @@ function renderHtml(): string {
       const runId = document.getElementById("runId");
       const runCreatedAt = document.getElementById("runCreatedAt");
       const runUpdatedAt = document.getElementById("runUpdatedAt");
+
+      function clearRun() {
+        state.currentRunId = null;
+        runStatus.textContent = "No run selected";
+        runId.textContent = "-";
+        runCreatedAt.textContent = "-";
+        runUpdatedAt.textContent = "-";
+        specEditor.value = "{}";
+        renderList(assumptionsList, [], "No run selected yet.");
+        renderList(warningsList, [], "No warnings yet.");
+      }
 
       function setStatus(message, tone = "neutral") {
         statusMessage.textContent = message;
@@ -386,7 +402,7 @@ function renderHtml(): string {
         for (const run of runs) {
           const button = document.createElement("button");
           button.className = "run-button";
-          button.innerHTML = \`<strong>\${run.id}</strong><div>\${run.sourcePrompt}</div>\`;
+          button.innerHTML = \`<strong>\${run.id}</strong><div class="run-prompt">\${run.sourcePrompt}</div>\`;
           button.addEventListener("click", async () => {
             await loadRun(run.id);
           });
@@ -465,6 +481,22 @@ function renderHtml(): string {
         setStatus("Spec changes saved.", "ok");
       }
 
+      async function deleteRun() {
+        if (!state.currentRunId) {
+          setStatus("No run selected yet.");
+          return;
+        }
+
+        setStatus("Deleting run...");
+        await fetchJson(\`\${apiGatewayUrl}/api/prompt-runs/\${encodeURIComponent(state.currentRunId)}\`, {
+          method: "DELETE",
+        });
+
+        clearRun();
+        await refreshRuns();
+        setStatus("Run deleted.", "ok");
+      }
+
       document.getElementById("submitPromptButton").addEventListener("click", async () => {
         try {
           await submitPrompt();
@@ -481,29 +513,15 @@ function renderHtml(): string {
         }
       });
 
-      document.getElementById("reloadRunButton").addEventListener("click", async () => {
-        if (!state.currentRunId) {
-          setStatus("No run selected yet.");
-          return;
-        }
-
+      document.getElementById("deleteRunButton").addEventListener("click", async () => {
         try {
-          await loadRun(state.currentRunId);
+          await deleteRun();
         } catch (error) {
-          setStatus(error instanceof Error ? error.message : "Failed to reload run.", "error");
+          setStatus(error instanceof Error ? error.message : "Failed to delete run.", "error");
         }
       });
 
-      document.getElementById("refreshRunsButton").addEventListener("click", async () => {
-        try {
-          setStatus("Refreshing saved runs...");
-          await refreshRuns();
-          setStatus("Saved runs refreshed.", "ok");
-        } catch (error) {
-          setStatus(error instanceof Error ? error.message : "Failed to refresh runs.", "error");
-        }
-      });
-
+      clearRun();
       refreshRuns().catch((error) => {
         setStatus(error instanceof Error ? error.message : "Failed to load saved runs.", "error");
       });

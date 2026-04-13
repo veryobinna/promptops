@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -82,6 +82,25 @@ export async function updatePromptParseRunSpec(
 
   await savePromptParseRun(updatedRun);
   return updatedRun;
+}
+
+export async function deletePromptParseRun(id: string): Promise<boolean> {
+  try {
+    await unlink(runFilePath(id));
+    return true;
+  } catch (error) {
+    const isMissing =
+      error instanceof Error &&
+      "code" in error &&
+      typeof error.code === "string" &&
+      error.code === "ENOENT";
+
+    if (isMissing) {
+      return false;
+    }
+
+    throw error;
+  }
 }
 
 export function toPromptParseRunRecord(

@@ -197,6 +197,20 @@ test("api-gateway creates and updates a persisted prompt parse run", async () =>
 
     assert.equal(fetchedPayload.run.id, createdPayload.run.id);
     assert.equal(fetchedPayload.run.spec.compute.desiredCount, 3);
+
+    const deleteResponse = await invokeHandler(
+      handler,
+      "DELETE",
+      `/api/prompt-runs/${encodeURIComponent(createdPayload.run.id)}`,
+    );
+    assert.equal(deleteResponse.statusCode, 200);
+
+    const afterDeleteResponse = await invokeHandler(
+      handler,
+      "GET",
+      `/api/prompt-runs/${encodeURIComponent(createdPayload.run.id)}`,
+    );
+    assert.equal(afterDeleteResponse.statusCode, 404);
   } finally {
     await rm(dataDir, {
       recursive: true,
