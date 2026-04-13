@@ -48,6 +48,9 @@ function json<T>(statusCode: number, body: T) {
     body: JSON.stringify(body),
     headers: {
       "content-type": "application/json",
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+      "access-control-allow-headers": "content-type",
     },
   };
 }
@@ -144,6 +147,16 @@ async function requestSpecGeneration(payload: PromptParseRequest): Promise<Promp
 
 const server = createServer(async (request, response) => {
   try {
+    if (request.method === "OPTIONS") {
+      response.writeHead(204, {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+        "access-control-allow-headers": "content-type",
+      });
+      response.end();
+      return;
+    }
+
     if (request.method === "GET" && request.url === "/health") {
       const payload: HealthResponse = {
         service: apiGatewayManifest.name,
