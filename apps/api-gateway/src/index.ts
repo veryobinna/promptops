@@ -1,6 +1,7 @@
 import { createServer, request as httpRequest } from "node:http";
 import type { IncomingMessage } from "node:http";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 import type {
   HealthResponse,
@@ -97,8 +98,11 @@ function promptParseRunIdFromUrl(url: string | undefined): string | null {
   return runId ? decodeURIComponent(runId) : null;
 }
 
-async function requestSpecGeneration(payload: PromptParseRequest): Promise<PromptParseResponse> {
-  const baseUrl = new URL(generatorBaseUrl());
+async function requestSpecGeneration(
+  payload: PromptParseRequest,
+  serviceUrl = generatorBaseUrl(),
+): Promise<PromptParseResponse> {
+  const baseUrl = new URL(serviceUrl);
 
   return await new Promise<PromptParseResponse>((resolve, reject) => {
     const upstream = httpRequest(
@@ -145,137 +149,162 @@ async function requestSpecGeneration(payload: PromptParseRequest): Promise<Promp
   });
 }
 
-const server = createServer(async (request, response) => {
-  try {
-    if (request.method === "OPTIONS") {
-      response.writeHead(204, {
-        "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
-        "access-control-allow-headers": "content-type",
+type SpecGenerationRequester = (payload: PromptParseRequest) => Promise<PromptParseResponse>;
+
+export function createApiGatewayHandler(options?: {
+  generatorServiceUrl?: string;
+  requestSpecGeneration?: SpecGenerationRequester;
+}) {
+  return async (request: IncomingMessage, response: NodeJS.WritableStream & {
+    writeHead(statusCode: number, headers: Record<string, string>): void;
+    end(body?: string): void;
+  }) => {
+    try {
+      if (request.method === "OPTIONS") {
+        response.writeHead(204, {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+          "access-control-allow-headers": "content-type",
+        });
+        response.end();
+        return;
+      }
+
+      if (request.method === "GET" && request.url === "/health") {
+        const payload: HealthResponse = {
+          service: apiGatewayManifest.name,
+          status: "ok",
+        };
+        const result = json(200, payload);
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      if (request.method === "GET" && request.url === "/api/prompt-runs") {
+        const payload: PromptParseRunListResponse = {
+          runs: await listPromptParseRuns(),
+        };
+        const result = json(200, payload);
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      const runId = promptParseRunIdFromUrl(request.url);
+
+      if (request.method === "GET" && runId) {
+        const run = await readPromptParseRun(runId);
+
+        if (!run) {
+          const result = json(404, {
+            error: "Prompt parse run not found.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const payload: PromptParseRunEnvelope = {
+          run,
+        };
+        const result = json(200, payload);
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      if (request.method === "PATCH" && runId) {
+        const payload = await readJsonBody(request);
+
+        if (!isPromptParseRunSpecUpdateRequest(payload)) {
+          const result = json(400, {
+            error: "Invalid request body. Expected a valid deployment spec.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const updatedRun = await updatePromptParseRunSpec(runId, payload.spec);
+
+        if (!updatedRun) {
+          const result = json(404, {
+            error: "Prompt parse run not found.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const envelope: PromptParseRunEnvelope = {
+          run: updatedRun,
+        };
+        const result = json(200, envelope);
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      if (request.method === "POST" && request.url === "/api/prompts/parse") {
+        const payload = await readJsonBody(request);
+
+        if (!isPromptParseRequest(payload)) {
+          const result = json(400, {
+            error: "Invalid request body. Expected a non-empty prompt string.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const generated = await (options?.requestSpecGeneration ??
+          ((requestPayload) => requestSpecGeneration(requestPayload, options?.generatorServiceUrl)))({
+          prompt: payload.prompt.trim(),
+        });
+        const run = toPromptParseRunRecord(randomUUID(), generated);
+        await savePromptParseRun(run);
+
+        const envelope: PromptParseRunEnvelope = {
+          run,
+        };
+        const result = json(200, envelope);
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      const result = json(404, {
+        error: "Route not found.",
       });
-      response.end();
-      return;
-    }
-
-    if (request.method === "GET" && request.url === "/health") {
-      const payload: HealthResponse = {
-        service: apiGatewayManifest.name,
-        status: "ok",
-      };
-      const result = json(200, payload);
       response.writeHead(result.statusCode, result.headers);
       response.end(result.body);
-      return;
-    }
-
-    if (request.method === "GET" && request.url === "/api/prompt-runs") {
-      const payload: PromptParseRunListResponse = {
-        runs: await listPromptParseRuns(),
-      };
-      const result = json(200, payload);
-      response.writeHead(result.statusCode, result.headers);
-      response.end(result.body);
-      return;
-    }
-
-    const runId = promptParseRunIdFromUrl(request.url);
-
-    if (request.method === "GET" && runId) {
-      const run = await readPromptParseRun(runId);
-
-      if (!run) {
-        const result = json(404, {
-          error: "Prompt parse run not found.",
-        });
-        response.writeHead(result.statusCode, result.headers);
-        response.end(result.body);
-        return;
-      }
-
-      const payload: PromptParseRunEnvelope = {
-        run,
-      };
-      const result = json(200, payload);
-      response.writeHead(result.statusCode, result.headers);
-      response.end(result.body);
-      return;
-    }
-
-    if (request.method === "PATCH" && runId) {
-      const payload = await readJsonBody(request);
-
-      if (!isPromptParseRunSpecUpdateRequest(payload)) {
-        const result = json(400, {
-          error: "Invalid request body. Expected a valid deployment spec.",
-        });
-        response.writeHead(result.statusCode, result.headers);
-        response.end(result.body);
-        return;
-      }
-
-      const updatedRun = await updatePromptParseRunSpec(runId, payload.spec);
-
-      if (!updatedRun) {
-        const result = json(404, {
-          error: "Prompt parse run not found.",
-        });
-        response.writeHead(result.statusCode, result.headers);
-        response.end(result.body);
-        return;
-      }
-
-      const envelope: PromptParseRunEnvelope = {
-        run: updatedRun,
-      };
-      const result = json(200, envelope);
-      response.writeHead(result.statusCode, result.headers);
-      response.end(result.body);
-      return;
-    }
-
-    if (request.method === "POST" && request.url === "/api/prompts/parse") {
-      const payload = await readJsonBody(request);
-
-      if (!isPromptParseRequest(payload)) {
-        const result = json(400, {
-          error: "Invalid request body. Expected a non-empty prompt string.",
-        });
-        response.writeHead(result.statusCode, result.headers);
-        response.end(result.body);
-        return;
-      }
-
-      const generated = await requestSpecGeneration({
-        prompt: payload.prompt.trim(),
+    } catch (error) {
+      const result = json(502, {
+        error: error instanceof Error ? error.message : "Unexpected upstream failure.",
       });
-      const run = toPromptParseRunRecord(randomUUID(), generated);
-      await savePromptParseRun(run);
-
-      const envelope: PromptParseRunEnvelope = {
-        run,
-      };
-      const result = json(200, envelope);
       response.writeHead(result.statusCode, result.headers);
       response.end(result.body);
-      return;
     }
+  };
+}
 
-    const result = json(404, {
-      error: "Route not found.",
-    });
-    response.writeHead(result.statusCode, result.headers);
-    response.end(result.body);
-  } catch (error) {
-    const result = json(502, {
-      error: error instanceof Error ? error.message : "Unexpected upstream failure.",
-    });
-    response.writeHead(result.statusCode, result.headers);
-    response.end(result.body);
-  }
-});
+export function createApiGatewayServer(options?: {
+  generatorServiceUrl?: string;
+  requestSpecGeneration?: SpecGenerationRequester;
+}) {
+  return createServer(createApiGatewayHandler(options));
+}
 
-const port = readPort();
+function isDirectExecution(): boolean {
+  return Boolean(process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]);
+}
 
-server.listen(port, () => {
-  console.log(`[api-gateway] listening on port ${port}`);
-});
+if (isDirectExecution()) {
+  const port = readPort();
+  const server = createApiGatewayServer();
+
+  server.listen(port, () => {
+    console.log(`[api-gateway] listening on port ${port}`);
+  });
+}

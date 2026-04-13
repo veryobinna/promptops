@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "build": "sh ./scripts/build-workspaces.sh",
+    "test": "sh ./scripts/test-workspaces.sh",
     "typecheck": "sh ./scripts/typecheck-workspaces.sh"
   },
   "devDependencies": {

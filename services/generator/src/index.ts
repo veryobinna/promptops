@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import type { IncomingMessage } from "node:http";
+import { fileURLToPath } from "node:url";
 
 import type {
   DeploymentSpec,
@@ -57,7 +58,7 @@ function isPromptParseRequest(value: unknown): value is PromptParseRequest {
   );
 }
 
-function buildSpecFromPrompt(prompt: string): PromptParseResponse {
+export function buildSpecFromPrompt(prompt: string): PromptParseResponse {
   const normalizedPrompt = prompt.toLowerCase();
   const assumptions: string[] = [
     "Defaulted application type to Node.js API.",
@@ -140,53 +141,62 @@ function buildSpecFromPrompt(prompt: string): PromptParseResponse {
   };
 }
 
-const server = createServer(async (request, response) => {
-  try {
-    if (request.method === "GET" && request.url === "/health") {
-      const payload: HealthResponse = {
-        service: generatorManifest.name,
-        status: "ok",
-      };
-      const result = json(200, payload);
-      response.writeHead(result.statusCode, result.headers);
-      response.end(result.body);
-      return;
-    }
-
-    if (request.method === "POST" && request.url === "/internal/spec/generate") {
-      const payload = await readJsonBody(request);
-
-      if (!isPromptParseRequest(payload)) {
-        const result = json(400, {
-          error: "Invalid request body. Expected a non-empty prompt string.",
-        });
+export function createGeneratorServer() {
+  return createServer(async (request, response) => {
+    try {
+      if (request.method === "GET" && request.url === "/health") {
+        const payload: HealthResponse = {
+          service: generatorManifest.name,
+          status: "ok",
+        };
+        const result = json(200, payload);
         response.writeHead(result.statusCode, result.headers);
         response.end(result.body);
         return;
       }
 
-      const result = json(200, buildSpecFromPrompt(payload.prompt.trim()));
+      if (request.method === "POST" && request.url === "/internal/spec/generate") {
+        const payload = await readJsonBody(request);
+
+        if (!isPromptParseRequest(payload)) {
+          const result = json(400, {
+            error: "Invalid request body. Expected a non-empty prompt string.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const result = json(200, buildSpecFromPrompt(payload.prompt.trim()));
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      const result = json(404, {
+        error: "Route not found.",
+      });
       response.writeHead(result.statusCode, result.headers);
       response.end(result.body);
-      return;
+    } catch (error) {
+      const result = json(500, {
+        error: error instanceof Error ? error.message : "Unexpected generator failure.",
+      });
+      response.writeHead(result.statusCode, result.headers);
+      response.end(result.body);
     }
+  });
+}
 
-    const result = json(404, {
-      error: "Route not found.",
-    });
-    response.writeHead(result.statusCode, result.headers);
-    response.end(result.body);
-  } catch (error) {
-    const result = json(500, {
-      error: error instanceof Error ? error.message : "Unexpected generator failure.",
-    });
-    response.writeHead(result.statusCode, result.headers);
-    response.end(result.body);
-  }
-});
+function isDirectExecution(): boolean {
+  return Boolean(process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]);
+}
 
-const port = readPort();
+if (isDirectExecution()) {
+  const port = readPort();
+  const server = createGeneratorServer();
 
-server.listen(port, () => {
-  console.log(`[generator] listening on port ${port}`);
-});
+  server.listen(port, () => {
+    console.log(`[generator] listening on port ${port}`);
+  });
+}
