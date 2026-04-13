@@ -13,6 +13,7 @@ import type {
 } from "@promptops/shared-types";
 import { isDeploymentSpec } from "@promptops/shared-types";
 import {
+  deletePromptParseRun,
   listPromptParseRuns,
   readPromptParseRun,
   savePromptParseRun,
@@ -50,7 +51,7 @@ function json<T>(statusCode: number, body: T) {
     headers: {
       "content-type": "application/json",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+      "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
       "access-control-allow-headers": "content-type",
     },
   };
@@ -163,7 +164,7 @@ export function createApiGatewayHandler(options?: {
       if (request.method === "OPTIONS") {
         response.writeHead(204, {
           "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+          "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
           "access-control-allow-headers": "content-type",
         });
         response.end();
@@ -241,6 +242,27 @@ export function createApiGatewayHandler(options?: {
           run: updatedRun,
         };
         const result = json(200, envelope);
+        response.writeHead(result.statusCode, result.headers);
+        response.end(result.body);
+        return;
+      }
+
+      if (request.method === "DELETE" && runId) {
+        const deleted = await deletePromptParseRun(runId);
+
+        if (!deleted) {
+          const result = json(404, {
+            error: "Prompt parse run not found.",
+          });
+          response.writeHead(result.statusCode, result.headers);
+          response.end(result.body);
+          return;
+        }
+
+        const result = json(200, {
+          deleted: true,
+          id: runId,
+        });
         response.writeHead(result.statusCode, result.headers);
         response.end(result.body);
         return;
